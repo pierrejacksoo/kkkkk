@@ -95,7 +95,7 @@ def save_cookies(data):
 
 def load_cookies():
     if os.path.exists(COOKIES_PATH):
-        with open(COOKIES_PATH, 'r', encoding='utf-8') as f):
+        with open(COOKIES_PATH, 'r', encoding='utf-8') as f:
             return json.load(f)
     return {}
 
@@ -155,8 +155,7 @@ class DashboardScreen(BoxLayout):
         self.balance_label = Label()
         self.add_widget(self.balance_label)
 
-        
-        self.generate_qr_button = Button(text='Pay me' # Blue button
+        self.generate_qr_button = Button(text='Pay me', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
         self.generate_qr_button.bind(on_press=self.generate_qr_code)
         self.add_widget(self.generate_qr_button)
 
@@ -210,7 +209,7 @@ class DashboardScreen(BoxLayout):
         img.save(buffer, 'PNG')
         buffer.seek(0)
 
-        popup = Popup(title='QR Code', content=Image(texture=Texture.create(size=img.size, colorfmt='rgb', buffer=buffer.read())), size_hint=(0.8, 0.8))
+        popup = Popup(title='QR Code', content=Image(source=buffer), size_hint=(0.8, 0.8))
         popup.open()
 
     def scan_qr_code(self, instance):
@@ -383,5 +382,8 @@ class CryptoAppApp(App):
 
         return self.sm
 
+def main():
+    return CryptoAppApp()
+
 if __name__ == '__main__':
-    CryptoAppApp().run()
+    main().run()
