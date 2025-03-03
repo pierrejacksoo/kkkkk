@@ -1,18 +1,31 @@
-[tool.briefcase]
-project_name = "VORTEX POCKET"
-version = "1.0.0"
-bundle = "com.example"
-author = "MM"
-author_email = "your.email@example.com"
-description = "A short description of your project"
-url = "https://example.com"
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.poetry]
+name = "VORTEX POCKET"
+version = "0.1.0"
+description = "A simple transceiver app using BeeWare"
+authors = ["Pierrejacksoo <email@example.com>"]
 license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/pierrejacksoo/transceiver"
+repository = "https://github.com/pierrejacksoo/transceiver"
+documentation = "https://github.com/pierrejacksoo/transceiver/wiki"
 
-[tool.briefcase.app.your_project_name]
+[tool.poetry.dependencies]
+python = "^3.8"
+toga = {version = "^0.3.0.dev26", extras = ["cocoa", "gtk", "iOS", "android", "winforms", "django"]}
+setuptools = "^57.0.0"
+wheel = "^0.36.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+
+[tool.toga]
 formal_name = "VORTEX POCKET"
-description = "A short description of your project"
-sources = ["src"]
-
-[tool.briefcase.app.your_project_name.android]
-# Android-specific settings
-package = "com.example.yourprojectname"
+app_name = "VORTEX POCKET"
+bundle = "org.beeware.transceiver"
+version = "0.1.0"
+description = "A simple transceiver app using BeeWare"
+sources = ["vortex.py"]
