@@ -1,31 +1,25 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["setuptools>=42", "wheel", "toga"]
 
-[tool.poetry]
-name = "VORTEX POCKET"
+[project]
+name = "vortex_pocket"
 version = "0.1.0"
-description = "A simple transceiver app using BeeWare"
-authors = ["Pierrejacksoo <email@example.com>"]
-license = "MIT"
-readme = "README.md"
-homepage = "https://github.com/pierrejacksoo/transceiver"
-repository = "https://github.com/pierrejacksoo/transceiver"
-documentation = "https://github.com/pierrejacksoo/transceiver/wiki"
+description = "GET YOUR DMNC!"
+authors = [
+    { name="Pierre Jacksoo", email="pierrejacksoo@example.com" }
+]
+license = { text = "MIT" }
 
-[tool.poetry.dependencies]
-python = "^3.8"
-toga = {version = "^0.3.0.dev26", extras = ["cocoa", "gtk", "iOS", "android", "winforms", "django"]}
-setuptools = "^57.0.0"
-wheel = "^0.36.2"
+[tool.setuptools]
+packages = [""]
 
-[tool.poetry.dev-dependencies]
-pytest = "^6.2.4"
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+crypto = ["pycryptodome", "bcrypt"]
+pdf = ["reportlab"]
+qr = ["qrcode"]
+color = ["colorama"]
+db = ["supabase"]
 
-[tool.toga]
-formal_name = "VORTEX POCKET"
-app_name = "VORTEX POCKET"
-bundle = "org.beeware.transceiver"
-version = "0.1.0"
-description = "A simple transceiver app using BeeWare"
-sources = ["vortex.py"]
+[project.scripts]
+vortex_pocket = "vortex:main"
