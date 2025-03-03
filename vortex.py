@@ -6,7 +6,7 @@ import qrcode
 import requests
 from datetime import datetime
 from io import BytesIO
-from colorama import Fore, Back, Style, init
+from colorama import Fore, init
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -14,9 +14,8 @@ from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
-from kivy.core.window import Window
-from kivy.uix.camera import Camera
 from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.camera import Camera
 from kivy.graphics.texture import Texture
 from supabase import create_client, Client
 from reportlab.lib.pagesizes import letter
@@ -30,7 +29,6 @@ init(autoreset=True)
 
 # Constants
 COOKIES_PATH = os.path.join(os.path.expanduser('~'), 'crypto_app_cookies.json')
-
 
 # Supabase setup
 SUPABASE_URL = 'https://mcsqjznczjhjstkpquxa.supabase.co'
@@ -95,7 +93,7 @@ def save_cookies(data):
 
 def load_cookies():
     if os.path.exists(COOKIES_PATH):
-        with open(COOKIES_PATH, 'r', encoding='utf-8') as f):
+        with open(COOKIES_PATH, 'r', encoding='utf-8') as f:
             return json.load(f)
     return {}
 
@@ -105,7 +103,6 @@ class LoginScreen(BoxLayout):
         self.orientation = 'vertical'
         self.padding = 20
         self.spacing = 10
-        self.background_color = [255/255, 224/255, 130/255, 1]  # Light yellow background
 
         self.pseudonym_input = TextInput(hint_text='Přezdívka', multiline=False)
         self.add_widget(self.pseudonym_input)
@@ -144,7 +141,6 @@ class DashboardScreen(BoxLayout):
         self.orientation = 'vertical'
         self.padding = 20
         self.spacing = 10
-        self.background_color = [224/255, 255/255, 255/255, 1]  # Light cyan background
 
         self.pseudonym_label = Label()
         self.add_widget(self.pseudonym_label)
@@ -155,8 +151,7 @@ class DashboardScreen(BoxLayout):
         self.balance_label = Label()
         self.add_widget(self.balance_label)
 
-        
-        self.generate_qr_button = Button(text='Pay me' # Blue button
+        self.generate_qr_button = Button(text='Pay me')  # Blue button
         self.generate_qr_button.bind(on_press=self.generate_qr_code)
         self.add_widget(self.generate_qr_button)
 
@@ -210,7 +205,10 @@ class DashboardScreen(BoxLayout):
         img.save(buffer, 'PNG')
         buffer.seek(0)
 
-        popup = Popup(title='QR Code', content=Image(texture=Texture.create(size=img.size, colorfmt='rgb', buffer=buffer.read())), size_hint=(0.8, 0.8))
+        texture = Texture.create(size=(img.size[0], img.size[1]), colorfmt='rgb')
+        texture.blit_buffer(buffer.read(), colorfmt='rgb', bufferfmt='ubyte')
+
+        popup = Popup(title='QR Code', content=Image(texture=texture), size_hint=(0.8, 0.8))
         popup.open()
 
     def scan_qr_code(self, instance):
@@ -247,7 +245,6 @@ class TransferScreen(BoxLayout):
         self.orientation = 'vertical'
         self.padding = 20
         self.spacing = 10
-        self.background_color = [255/255, 224/255, 224/255, 1]  # Light pink background
 
         self.recipient_wallet_input = TextInput(hint_text='Příjemce', multiline=False)
         self.add_widget(self.recipient_wallet_input)
@@ -318,7 +315,6 @@ class TransactionsScreen(BoxLayout):
         self.orientation = 'vertical'
         self.padding = 20
         self.spacing = 10
-        self.background_color = [255/255, 255/255, 224/255, 1]  # Light yellow background
 
         self.transactions_label = Label()
         self.add_widget(self.transactions_label)
@@ -338,7 +334,6 @@ class BuyCryptoScreen(BoxLayout):
         self.orientation = 'vertical'
         self.padding = 20
         self.spacing = 10
-        self.background_color = [224/255, 255/255, 224/255, 1]  # Light green background
 
         self.bank_address_label = Label(text=f"Bankovní účet: {BANK_ADDRESS}")
         self.add_widget(self.bank_address_label)
@@ -357,7 +352,6 @@ class ScanQRScreen(BoxLayout):
         self.orientation = 'vertical'
         self.padding = 20
         self.spacing = 10
-        self.background_color = [255/255, 224/255, 255/255, 1]  # Light purple background
 
         self.camera = Camera(play=True)
         self.add_widget(self.camera)
@@ -367,21 +361,32 @@ class ScanQRScreen(BoxLayout):
         self.add_widget(self.scan_button)
 
     def scan(self, instance):
-        # Implement QR Code scanning logic
-        pass
+        from jnius import autoclass
+        Intent = autoclass('android.content.Intent')
+        MediaStore = autoclass('android.provider.MediaStore')
+        activity = autoclass('org.kivy.android.PythonActivity').mActivity
+
+        def on_activity_result(request_code, result_code, data):
+            if result_code == activity.RESULT_OK:
+                bitmap = MediaStore.Images.Media.getBitmap(activity.getContentResolver(), data.getData())
+                # Implement QR Code decoding logic with `zxing` or any other library here
+                # For example, you can save the bitmap and process it with zxing
+
+        activity.startActivityForResult(Intent(MediaStore.ACTION_IMAGE_CAPTURE), 0)
+        activity.bind(onActivityResult=on_activity_result)
 
 class CryptoAppApp(App):
     def build(self):
-        self.sm = ScreenManager()
+        sm = ScreenManager()
 
-        self.sm.add_widget(Screen(name='login', content=LoginScreen()))
-        self.sm.add_widget(Screen(name='dashboard', content=DashboardScreen()))
-        self.sm.add_widget(Screen(name='transfer', content=TransferScreen()))
-        self.sm.add_widget(Screen(name='transactions', content=TransactionsScreen()))
-        self.sm.add_widget(Screen(name='buycrypto', content=BuyCryptoScreen()))
-        self.sm.add_widget(Screen(name='scanqr', content=ScanQRScreen()))
+        sm.add_widget(Screen(name='login', content=LoginScreen()))
+        sm.add_widget(Screen(name='dashboard', content=DashboardScreen()))
+        sm.add_widget(Screen(name='transfer', content=TransferScreen()))
+        sm.add_widget(Screen(name='transactions', content=TransactionsScreen()))
+        sm.add_widget(Screen(name='buycrypto', content=BuyCryptoScreen()))
+        sm.add_widget(Screen(name='scanqr', content=ScanQRScreen()))
 
-        return self.sm
+        return sm
 
 if __name__ == '__main__':
     CryptoAppApp().run()
