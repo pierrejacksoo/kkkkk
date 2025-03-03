@@ -7,21 +7,30 @@ import requests
 from datetime import datetime
 from io import BytesIO
 from colorama import Fore, Back, Style, init
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
+from kivy.uix.image import Image
+from kivy.uix.popup import Popup
+from kivy.core.window import Window
+from kivy.uix.camera import Camera
+from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.graphics.texture import Texture
 from supabase import create_client, Client
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from Crypto.Hash import RIPEMD160
 from Crypto.Cipher import AES
 from base64 import b64encode, b64decode
-import toga
-from toga.style import Pack
-from toga.style.pack import COLUMN, ROW
 
 # Initialize colorama
 init(autoreset=True)
 
 # Constants
 COOKIES_PATH = os.path.join(os.path.expanduser('~'), 'crypto_app_cookies.json')
+
 
 # Supabase setup
 SUPABASE_URL = 'https://mcsqjznczjhjstkpquxa.supabase.co'
@@ -79,115 +88,112 @@ def generate_pdf_statement(user):
     buffer.seek(0)
     return buffer
 
+# Helper functions
 def save_cookies(data):
     with open(COOKIES_PATH, 'w', encoding='utf-8') as f:
         json.dump(data, f)
 
 def load_cookies():
     if os.path.exists(COOKIES_PATH):
-        with open(COOKIES_PATH, 'r', encoding='utf-8') as f:
+        with open(COOKIES_PATH, 'r', encoding='utf-8') as f):
             return json.load(f)
     return {}
 
-class CryptoApp(toga.App):
-    def startup(self):
-        self.main_window = toga.MainWindow(title=self.name)
+class LoginScreen(BoxLayout):
+    def __init__(self, **kwargs):
+        super(LoginScreen, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = 20
+        self.spacing = 10
+        self.background_color = [255/255, 224/255, 130/255, 1]  # Light yellow background
 
-        self.login_screen = self.build_login_screen()
-        self.dashboard_screen = self.build_dashboard_screen()
-        self.transfer_screen = self.build_transfer_screen()
-        self.transactions_screen = self.build_transactions_screen()
-        self.buycrypto_screen = self.build_buycrypto_screen()
-        self.scanqr_screen = self.build_scanqr_screen()
+        self.pseudonym_input = TextInput(hint_text='Přezdívka', multiline=False)
+        self.add_widget(self.pseudonym_input)
 
-        self.main_box = toga.Box(style=Pack(direction=COLUMN))
-        self.main_box.add(self.login_screen)
+        self.password_input = TextInput(hint_text='Heslo', multiline=False, password=True)
+        self.add_widget(self.password_input)
 
-        self.main_window.content = self.main_box
-        self.main_window.show()
+        self.login_button = Button(text='PŘIHLÁSIT SE', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.login_button.bind(on_press=self.login)
+        self.add_widget(self.login_button)
 
-    def build_login_screen(self):
-        box = toga.Box(style=Pack(direction=COLUMN, padding=20, spacing=10))
-
-        self.pseudonym_input = toga.TextInput(placeholder='Přezdívka')
-        box.add(self.pseudonym_input)
-
-        self.password_input = toga.PasswordInput(placeholder='Heslo')
-        box.add(self.password_input)
-
-        login_button = toga.Button('PŘIHLÁSIT SE', on_press=self.login)
-        box.add(login_button)
-
-        self.message = toga.Label('')
-        box.add(self.message)
-
+        self.message = Label(color=[255/255, 0/255, 0/255, 1])  # Red text
+        self.add_widget(self.message)
+        # Load cookies and autofill pseudonym if available
         cookies = load_cookies()
         if 'pseudonym' in cookies:
-            self.pseudonym_input.value = cookies['pseudonym']
+            self.pseudonym_input.text = cookies['pseudonym']
 
-        return box
-
-    def login(self, widget):
-        pseudonym = self.pseudonym_input.value
-        password = self.password_input.value
+    def login(self, instance):
+        pseudonym = self.pseudonym_input.text
+        password = self.password_input.text
 
         user = supabase.table('users').select("*").eq('pseudonym', pseudonym).execute()
         if user.data and verify_password(password, user.data[0]['password']):
             self.user = user.data[0]
             print(Fore.GREEN + "Přihlášení úspěšné")
             save_cookies({'pseudonym': pseudonym})
-            self.main_box.remove(self.login_screen)
-            self.main_box.add(self.dashboard_screen)
-            self.on_pre_enter_dashboard()
+            self.manager.current = 'dashboard'
         else:
             self.message.text = 'Přihlášení selhalo'
             print(Fore.RED + "Přihlášení selhalo")
 
-    def build_dashboard_screen(self):
-        box = toga.Box(style=Pack(direction=COLUMN, padding=20, spacing=10))
+class DashboardScreen(BoxLayout):
+    def __init__(self, **kwargs):
+        super(DashboardScreen, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = 20
+        self.spacing = 10
+        self.background_color = [224/255, 255/255, 255/255, 1]  # Light cyan background
 
-        self.pseudonym_label = toga.Label('')
-        box.add(self.pseudonym_label)
+        self.pseudonym_label = Label()
+        self.add_widget(self.pseudonym_label)
 
-        self.wallet_label = toga.Label('')
-        box.add(self.wallet_label)
+        self.wallet_label = Label()
+        self.add_widget(self.wallet_label)
 
-        self.balance_label = toga.Label('')
-        box.add(self.balance_label)
+        self.balance_label = Label()
+        self.add_widget(self.balance_label)
 
-        generate_qr_button = toga.Button('Pay me', on_press=self.generate_qr_code)
-        box.add(generate_qr_button)
+        
+        self.generate_qr_button = Button(text='Pay me' # Blue button
+        self.generate_qr_button.bind(on_press=self.generate_qr_code)
+        self.add_widget(self.generate_qr_button)
 
-        scan_qr_button = toga.Button('QR platba', on_press=self.scan_qr_code)
-        box.add(scan_qr_button)
+        self.scan_qr_button = Button(text='QR platba', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.scan_qr_button.bind(on_press=self.scan_qr_code)
+        self.add_widget(self.scan_qr_button)
 
-        transfer_button = toga.Button('Převod', on_press=self.transfer)
-        box.add(transfer_button)
+        self.transfer_button = Button(text='Převod', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.transfer_button.bind(on_press=self.transfer)
+        self.add_widget(self.transfer_button)
 
-        transactions_button = toga.Button('Historie', on_press=self.transactions)
-        box.add(transactions_button)
+        self.transactions_button = Button(text='Historie', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.transactions_button.bind(on_press=self.transactions)
+        self.add_widget(self.transactions_button)
 
-        buy_crypto_button = toga.Button('Koupit', on_press=self.buy_crypto)
-        box.add(buy_crypto_button)
+        self.buy_crypto_button = Button(text='Koupit', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.buy_crypto_button.bind(on_press=self.buy_crypto)
+        self.add_widget(self.buy_crypto_button)
 
-        download_statement_button = toga.Button('Download Statement', on_press=self.download_statement)
-        box.add(download_statement_button)
+        self.download_statement_button = Button(text='Download Statement', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.download_statement_button.bind(on_press=self.download_statement)
+        self.add_widget(self.download_statement_button)
 
-        logout_button = toga.Button('Logout', on_press=self.logout)
-        box.add(logout_button)
+        self.logout_button = Button(text='Logout', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.logout_button.bind(on_press=self.logout)
+        self.add_widget(self.logout_button)
 
-        return box
-
-    def on_pre_enter_dashboard(self):
-        user_id = self.user['user_id']
+    def on_pre_enter(self):
+        user_id = self.manager.get_screen('login').user['user_id']
         user = supabase.table('users').select("*").eq('user_id', user_id).execute().data[0]
         self.pseudonym_label.text = f"Pseudonym: {user['pseudonym']}"
         self.wallet_label.text = f"Wallet: {user['wallet']}"
         self.balance_label.text = f"Balance: {user['balance']}"
 
-    def generate_qr_code(self, widget):
-        amount = '10'
-        user_id = self.user['user_id']
+    def generate_qr_code(self, instance):
+        amount = '10'  # Example amount
+        user_id = self.manager.get_screen('login').user['user_id']
         user = supabase.table('users').select("*").eq('user_id', user_id).execute().data[0]
 
         qr_data = {
@@ -204,85 +210,80 @@ class CryptoApp(toga.App):
         img.save(buffer, 'PNG')
         buffer.seek(0)
 
-        popup = toga.Window(title='QR Code')
-        popup.content = toga.Image(data=buffer)
-        popup.show()
+        popup = Popup(title='QR Code', content=Image(texture=Texture.create(size=img.size, colorfmt='rgb', buffer=buffer.read())), size_hint=(0.8, 0.8))
+        popup.open()
 
-    def scan_qr_code(self, widget):
-        self.main_box.remove(self.dashboard_screen)
-        self.main_box.add(self.scanqr_screen)
+    def scan_qr_code(self, instance):
+        self.manager.current = 'scanqr'
 
-    def transfer(self, widget):
-        self.main_box.remove(self.dashboard_screen)
-        self.main_box.add(self.transfer_screen)
+    def transfer(self, instance):
+        self.manager.current = 'transfer'
 
-    def transactions(self, widget):
-        self.main_box.remove(self.dashboard_screen)
-        self.main_box.add(self.transactions_screen)
+    def transactions(self, instance):
+        self.manager.current = 'transactions'
 
-    def buy_crypto(self, widget):
-        self.main_box.remove(self.dashboard_screen)
-        self.main_box.add(self.buycrypto_screen)
+    def buy_crypto(self, instance):
+        self.manager.current = 'buycrypto'
 
-    def download_statement(self, widget):
-        user_id = self.user['user_id']
+    def download_statement(self, instance):
+        user_id = self.manager.get_screen('login').user['user_id']
         user = supabase.table('users').select("*").eq('user_id', user_id).execute().data[0]
         buffer = generate_pdf_statement(user)
 
+        # Save PDF to a real directory
         save_path = os.path.join(os.path.expanduser('~'), 'Documents', 'statement.pdf')
         with open(save_path, 'wb') as f:
             f.write(buffer.getvalue())
 
-        popup = toga.Window(title='STÁHNOUT')
-        popup.content = toga.Label(f'Výpis účtu ve formátu PDF byl stažen do: {save_path}')
-        popup.show()
+        popup = Popup(title='STÁHNOUT', content=Label(text=f'Výpis účtu ve formátu PDF byl stažen do: {save_path}'), size_hint=(0.8, 0.8))
+        popup.open()
 
-    def logout(self, widget):
-        self.main_box.remove(self.dashboard_screen)
-        self.main_box.add(self.login_screen)
+    def logout(self, instance):
+        self.manager.current = 'login'
 
-    def build_transfer_screen(self):
-        box = toga.Box(style=Pack(direction=COLUMN, padding=20, spacing=10))
+class TransferScreen(BoxLayout):
+    def __init__(self, **kwargs):
+        super(TransferScreen, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = 20
+        self.spacing = 10
+        self.background_color = [255/255, 224/255, 224/255, 1]  # Light pink background
 
-        self.recipient_wallet_input = toga.TextInput(placeholder='Recipient Wallet')
-        box.add(self.recipient_wallet_input)
+        self.recipient_wallet_input = TextInput(hint_text='Příjemce', multiline=False)
+        self.add_widget(self.recipient_wallet_input)
 
-        self.amount_input = toga.TextInput(placeholder='Amount')
-        box.add(self.amount_input)
+        self.amount_input = TextInput(hint_text='Částka', multiline=False)
+        self.add_widget(self.amount_input)
 
-        self.description_input = toga.TextInput(placeholder='Description')
-        box.add(self.description_input)
+        self.description_input = TextInput(hint_text='Popis', multiline=False)
+        self.add_widget(self.description_input)
 
-        transfer_button = toga.Button('Transfer', on_press=self.perform_transfer)
-        box.add(transfer_button)
+        self.transfer_button = Button(text='Převod', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.transfer_button.bind(on_press=self.transfer)
+        self.add_widget(self.transfer_button)
 
-        return box
+    def transfer(self, instance):
+        recipient_wallet = self.recipient_wallet_input.text
+        amount = float(self.amount_input.text)
+        description = self.description_input.text
 
-    def perform_transfer(self, widget):
-        recipient_wallet = self.recipient_wallet_input.value
-        amount = float(self.amount_input.value)
-        description = self.description_input.value
-
-        user_id = self.user['user_id']
+        user_id = self.manager.get_screen('login').user['user_id']
         user = supabase.table('users').select("*").eq('user_id', user_id).execute().data[0]
 
         if recipient_wallet == user['wallet']:
-            popup = toga.Window(title='Error')
-            popup.content = toga.Label('Nemůžete posílat krypoměnu na váš vlastní účet.')
-            popup.show()
+            popup = Popup(title='Error', content=Label(text='Nemůžete posílat krypoměnu na váš vlastní účet.'), size_hint=(0.8, 0.8))
+            popup.open()
             return
 
         if user['balance'] < amount:
-            popup = toga.Window(title='Error')
-            popup.content = toga.Label('Nedostatečný zůstatek')
-            popup.show()
+            popup = Popup(title='Error', content=Label(text='Nedostatečný zůstatek'), size_hint=(0.8, 0.8))
+            popup.open()
             return
 
         recipient_query = supabase.table('users').select("*").eq('wallet', recipient_wallet).execute()
         if not recipient_query.data:
-            popup = toga.Window(title='Error')
-            popup.content = toga.Label('Uživatelský účet neexistuje.')
-            popup.show()
+            popup = Popup(title='Error', content=Label(text='Uživatelský účet neexistuje.'), size_hint=(0.8, 0.8))
+            popup.open()
             return
 
         recipient = recipient_query.data[0]
@@ -306,23 +307,24 @@ class CryptoApp(toga.App):
         })
         supabase.table('users').update({'balance': recipient['balance'] + amount, 'transactions': recipient_transactions}).eq('wallet', recipient_wallet).execute()
 
-        popup = toga.Window(title='Success')
-        popup.content = toga.Label('Transfer Successful')
-        popup.show()
+        popup = Popup(title='Success', content=Label(text='Transfer Successful'), size_hint=(0.8, 0.8))
+        popup.open()
 
-        self.main_box.remove(self.transfer_screen)
-        self.main_box.add(self.dashboard_screen)
+        self.manager.current = 'dashboard'
 
-    def build_transactions_screen(self):
-        box = toga.Box(style=Pack(direction=COLUMN, padding=20, spacing=10))
+class TransactionsScreen(BoxLayout):
+    def __init__(self, **kwargs):
+        super(TransactionsScreen, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = 20
+        self.spacing = 10
+        self.background_color = [255/255, 255/255, 224/255, 1]  # Light yellow background
 
-        self.transactions_label = toga.Label('')
-        box.add(self.transactions_label)
+        self.transactions_label = Label()
+        self.add_widget(self.transactions_label)
 
-        return box
-
-    def on_pre_enter_transactions(self):
-        user_id = self.user['user_id']
+    def on_pre_enter(self):
+        user_id = self.manager.get_screen('login').user['user_id']
         user = supabase.table('users').select("*").eq('user_id', user_id).execute().data[0]
         transactions = user.get('transactions', [])
         transactions_text = ""
@@ -330,63 +332,56 @@ class CryptoApp(toga.App):
             transactions_text += f"{transaction['date']}: {transaction['type']} of {transaction['amount']} - {transaction['description']}\n"
         self.transactions_label.text = transactions_text
 
-    def build_buycrypto_screen(self):
-        box = toga.Box(style=Pack(direction=COLUMN, padding=20, spacing=10))
+class BuyCryptoScreen(BoxLayout):
+    def __init__(self, **kwargs):
+        super(BuyCryptoScreen, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = 20
+        self.spacing = 10
+        self.background_color = [224/255, 255/255, 224/255, 1]  # Light green background
 
-        self.bank_address_label = toga.Label(f"Bankovní účet: {BANK_ADDRESS}")
-        box.add(self.bank_address_label)
+        self.bank_address_label = Label(text=f"Bankovní účet: {BANK_ADDRESS}")
+        self.add_widget(self.bank_address_label)
 
-        self.variable_symbol_label = toga.Label('')
-        box.add(self.variable_symbol_label)
+        self.variable_symbol_label = Label()
+        self.add_widget(self.variable_symbol_label)
 
-        return box
-
-    def on_pre_enter_buycrypto(self):
-        user_id = self.user['user_id']
+    def on_pre_enter(self):
+        user_id = self.manager.get_screen('login').user['user_id']
         user = supabase.table('users').select("*").eq('user_id', user_id).execute().data[0]
         self.variable_symbol_label.text = f"Variabilní symbol: {user.get('variable_symbol', 'default_variable_symbol')}"
 
-    def build_scanqr_screen(self):
-        box = toga.Box(style=Pack(direction=COLUMN, padding=20, spacing=10))
+class ScanQRScreen(BoxLayout):
+    def __init__(self, **kwargs):
+        super(ScanQRScreen, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = 20
+        self.spacing = 10
+        self.background_color = [255/255, 224/255, 255/255, 1]  # Light purple background
 
-        self.camera_label = toga.Label('QR Code Scanner')
-        box.add(self.camera_label)
+        self.camera = Camera(play=True)
+        self.add_widget(self.camera)
 
-        self.camera_input = toga.TextInput(placeholder='Scan QR Code Here')
-        box.add(self.camera_input)
+        self.scan_button = Button(text='Scan', background_color=[0/255, 122/255, 255/255, 1])  # Blue button
+        self.scan_button.bind(on_press=self.scan)
+        self.add_widget(self.scan_button)
 
-        scan_button = toga.Button('Scan', on_press=self.scan_qr_code_action)
-        box.add(scan_button)
-
-        return box
-
-    def scan_qr_code_action(self, widget):
+    def scan(self, instance):
         # Implement QR Code scanning logic
-        qr_code_data = self.camera_input.value
-        if qr_code_data:
-            try:
-                qr_data = json.loads(qr_code_data)
-                self.process_qr_code(qr_data)
-            except json.JSONDecodeError:
-                popup = toga.Window(title='Error')
-                popup.content = toga.Label('Invalid QR Code')
-                popup.show()
+        pass
 
-    def process_qr_code(self, qr_data):
-        wallet = qr_data.get('wallet')
-        amount = qr_data.get('amount')
-        if wallet and amount:
-            self.recipient_wallet_input.value = wallet
-            self.amount_input.value = amount
-            self.main_box.remove(self.scanqr_screen)
-            self.main_box.add(self.transfer_screen)
-        else:
-            popup = toga.Window(title='Error')
-            popup.content = toga.Label('Invalid QR Code Data')
-            popup.show()
+class CryptoAppApp(App):
+    def build(self):
+        self.sm = ScreenManager()
 
-def main():
-    return CryptoApp()
+        self.sm.add_widget(Screen(name='login', content=LoginScreen()))
+        self.sm.add_widget(Screen(name='dashboard', content=DashboardScreen()))
+        self.sm.add_widget(Screen(name='transfer', content=TransferScreen()))
+        self.sm.add_widget(Screen(name='transactions', content=TransactionsScreen()))
+        self.sm.add_widget(Screen(name='buycrypto', content=BuyCryptoScreen()))
+        self.sm.add_widget(Screen(name='scanqr', content=ScanQRScreen()))
+
+        return self.sm
 
 if __name__ == '__main__':
-    main().main_loop()
+    CryptoAppApp().run()
