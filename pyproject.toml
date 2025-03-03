@@ -1,13 +1,18 @@
 [tool.briefcase]
-project_name = "CryptoApp"
+project_name = "VORTEX POCKET"
+version = "1.0.0"
 bundle = "com.example"
-formal_name = "CryptoApp"
-author = "Your Name"
+author = "MM"
 author_email = "your.email@example.com"
-description = "A cryptocurrency application built with Kivy and BeeWare."
-requires = ["kivy", "supabase", "reportlab", "bcrypt", "qrcode", "colorama"]
-version = "0.1.0"
-
-[tool.briefcase.app.crypto_app]
-sources = ["crypto_app"]
+description = "A short description of your project"
+url = "https://example.com"
 license = "MIT"
+
+[tool.briefcase.app.your_project_name]
+formal_name = "VORTEX POCKET"
+description = "A short description of your project"
+sources = ["src"]
+
+[tool.briefcase.app.your_project_name.android]
+# Android-specific settings
+package = "com.example.yourprojectname"
