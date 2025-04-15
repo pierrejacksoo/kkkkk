@@ -32,7 +32,7 @@ def packet_callback(pkt):
                 print(payload)
 
 # Zastavení odposlechu na specifickém rozhraní a portu
-def start_sniffing(interface="eth0"):
+def start_sniffing(interface="WiFi 2"):
     print(f"Začínám odposlouchávat na rozhraní {interface}")
     sniff(iface=interface, prn=packet_callback, filter="tcp port 443", store=0)
 
